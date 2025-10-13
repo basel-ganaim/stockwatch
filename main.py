@@ -1,9 +1,15 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
+import asyncio
+from prices import PRICES, update_prices_loop
 
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def start_background_tasks():
+    asyncio.create_task(update_prices_loop())
 
 @app.get("/")
 def health():
@@ -14,6 +20,8 @@ WATCHLIST: set[str] = set()
 
 # the supported tickers for now
 SUPPORTED_TICKERS = {"AAPL", "MSFT", "TSLA", "GOOG", "AMZN"}
+
+
 
 class AddTicker(BaseModel):
     ticker: str
@@ -39,3 +47,12 @@ def remove_watchlist(ticker: str):
         WATCHLIST.remove(t)
         return {"ok": True, "tickers": sorted(WATCHLIST)}
     return {"ok": False, "error": f"Ticker '{t}' not in watchlist"}
+
+
+@app.get("/price/{ticker}")
+def get_price(ticker: str):
+    t = ticker.upper()
+    if t not in SUPPORTED_TICKERS:
+        return {"ok": False, "error": f"Unsupported ticker '{t}', try one of {sorted(SUPPORTED_TICKERS)}"}
+    price = PRICES.get(t)
+    return {"ok": True, "ticker": t, "price": price}
