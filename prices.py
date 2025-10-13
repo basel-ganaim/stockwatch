@@ -20,5 +20,5 @@ async def update_prices_loop():
             if new_price < 1.0:
                 new_price = 1.0
             PRICES[t] = round(new_price, 2)
-        await asyncio.sleep(2)
+        await asyncio.sleep(5)
             

@@ -3,13 +3,17 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 from prices import PRICES, update_prices_loop
+from rules import router as rules_router, events_router, evaluate_rules_loop
 
 
 app = FastAPI()
+app.include_router(rules_router)
+app.include_router(events_router)
 
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(update_prices_loop())
+    asyncio.create_task(evaluate_rules_loop())
 
 @app.get("/")
 def health():
