@@ -5,6 +5,7 @@ import asyncio
 from prices import PRICES, update_prices_loop
 from rules import router as rules_router, events_router, evaluate_rules_loop
 from fastapi.middleware.cors import CORSMiddleware
+from prices import PRICES
 
 
 app = FastAPI()
@@ -60,6 +61,10 @@ def remove_watchlist(ticker: str):
         WATCHLIST.remove(t)
         return {"ok": True, "tickers": sorted(WATCHLIST)}
     return {"ok": False, "error": f"Ticker '{t}' not in watchlist"}
+
+@app.get("/prices")
+def get_prices():
+    return PRICES
 
 
 @app.get("/price/{ticker}")

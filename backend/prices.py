@@ -7,6 +7,12 @@ PRICES = {
     "TSLA": 255.8,
     "GOOG": 134.4,
     "AMZN": 175.6,
+    "GOLD": 190.2,
+    "SILVER": 24.3,
+    "OIL": 70.5,
+    "BTC": 30000.0,
+    "ETH": 2000.0,
+
 }
 
 async def update_prices_loop():
@@ -14,11 +20,11 @@ async def update_prices_loop():
     while True:
         for t in PRICES:
             price = PRICES[t]
-            pct_move = random.gauss(0.0, 0.2) / 100.0
+            pct_move = random.gauss(0.0, 0.1) / 100.0
             new_price = price * (1.0 + pct_move)
 
             if new_price < 1.0:
                 new_price = 1.0
             PRICES[t] = round(new_price, 2)
-        await asyncio.sleep(5)
+        await asyncio.sleep(0.01)
             
