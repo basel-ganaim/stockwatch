@@ -10,7 +10,7 @@ PRICES = {
     "GOLD": 190.2,
     "SILVER": 24.3,
     "OIL": 70.5,
-    "BTC": 30000.0,
+    "BTC": 111000.0,
     "ETH": 2000.0,
 
 }
@@ -26,5 +26,5 @@ async def update_prices_loop():
             if new_price < 1.0:
                 new_price = 1.0
             PRICES[t] = round(new_price, 2)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(1)
             
