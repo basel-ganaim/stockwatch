@@ -1,30 +1,19 @@
 import asyncio
-import random
+import yfinance as yf
 
-PRICES = {
-    "AAPL": 189.5,
-    "MSFT": 340.1,
-    "TSLA": 255.8,
-    "GOOG": 134.4,
-    "AMZN": 175.6,
-    "GOLD": 190.2,
-    "SILVER": 24.3,
-    "OIL": 70.5,
-    "BTC": 111000.0,
-    "ETH": 2000.0,
+PRICES = {}
+TICKERS = ["AAPL", "MSFT", "TSLA", "GOOG", "AMZN"]
 
-}
 
 async def update_prices_loop():
-
     while True:
-        for t in PRICES:
-            price = PRICES[t]
-            pct_move = random.gauss(0.0, 0.1) / 100.0
-            new_price = price * (1.0 + pct_move)
-
-            if new_price < 1.0:
-                new_price = 1.0
-            PRICES[t] = round(new_price, 2)
-        await asyncio.sleep(0.5)
-            
+        for t in TICKERS:
+            try:
+                data = yf.Ticker(t)
+                price = data.history(period = "1d", interval = "1m")["Close"].iloc[-1]
+                PRICES[t] = round(float(price), 2)
+            except Exception as e:
+                print(f"Error fetching price for {t}: {e}")
+        print("Updated prices:", PRICES)
+        await asyncio.sleep(10)  # update every 10 seconds
+                                                                     
