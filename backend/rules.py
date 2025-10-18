@@ -3,6 +3,11 @@ from datetime import datetime
 from typing import Literal, List
 from fastapi import APIRouter
 from pydantic import BaseModel
+from db_utils import add_rule as db_add_rule
+from db_utils import delete_rule as db_delete_rule
+from db_utils import list_events as db_list_events
+from db_utils import add_event as db_add_event
+from db_utils import list_rules as db_list_rules
 
 from prices import PRICES
 
@@ -37,58 +42,47 @@ events_router = APIRouter(prefix = "/events", tags = ["events"])
 
 @router.post("")
 def create_rule(payload: RuleCreate):
-    global _next_rule_id
     t = payload.ticker.upper()
     if t not in PRICES:
-                return {"ok": False, "error": f"Unsupported ticker '{t}'. Try one of {sorted(PRICES.keys())}"}
-    rule = Rule(
-            id = _next_rule_id,
-            ticker = t,
-            direction = payload.direction,
-            price = payload.price,
-            created_at = datetime.utcnow()
-    )
-    _next_rule_id += 1
-    RULES.append(rule)
-    return {"ok": True, "rule": rule.model_dump()}
+        return {"ok": False, "error": f"Unsupported ticker '{t}'. Try one of {sorted(PRICES.keys())}"}
+
+    # write to SQLite instead of in-memory
+    rid = db_add_rule(t, payload.direction, payload.price)
+    return {"ok": True, "id": rid}
 
 
 @router.get("")
 def list_rules() -> List[dict]:
-    return [r.model_dump() for r in RULES]
+    return db_list_rules()
+
 
 @router.delete("/{rule_id}")
 def delete_rule(rule_id: int):
-    idx = next((i for i, r in enumerate(RULES) if r.id == rule_id), None)
-    if idx is None:
-        return {"ok": False, "rules": [r.model_dump() for r in RULES]}
-    RULES.pop(idx)
-    return {"ok": True, "rules": [r.model_dump() for r in RULES]}
+    db_delete_rule(rule_id)        
+    return db_list_rules()   
+
+
 
 @events_router.get("")
 def list_events():
-    return [e.model_dump() for e in reversed(EVENTS)]
+    return db_list_events()
 
 
 async def evaluate_rules_loop():
     while True:
         now = datetime.utcnow()
-        for r in RULES:
-            price = PRICES.get(r.ticker)
+        # read rules from DB
+        for r in db_list_rules():  # r: {'id', 'ticker', 'direction', 'price', 'created_at'}
+            price = PRICES.get(r["ticker"])
             if price is None:
                 continue
             triggered = (
-                (r.direction == "above" and price >= r.price) or
-                (r.direction == "below" and price <= r.price)
+                (r["direction"] == "above" and price >= r["price"]) or
+                (r["direction"] == "below" and price <= r["price"])
             )
             if triggered:
-                EVENTS.append(Event(
-                    rule_id = r.id,
-                    ticker = r.ticker,
-                    price = price,
-                    direction = r.direction,
-                    triggered_at = now
-                ))
+                # write an event to DB
+                db_add_event(r["id"], r["ticker"], price, r["direction"])
         await asyncio.sleep(2)
             
 
