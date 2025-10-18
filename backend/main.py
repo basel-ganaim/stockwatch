@@ -6,6 +6,8 @@ from prices import PRICES, update_prices_loop
 from rules import router as rules_router, events_router, evaluate_rules_loop
 from fastapi.middleware.cors import CORSMiddleware
 from prices import PRICES
+from db_utils import add_ticker, get_watchlist as db_get_watchlist, remove_ticker
+from db_utils import DB_PATH
 
 
 app = FastAPI()
@@ -30,8 +32,6 @@ async def start_background_tasks():
 def health():
     return{"ok": True}
 
-#tmp in-memory watchlist
-WATCHLIST: set[str] = set()
 
 # the supported tickers for now
 SUPPORTED_TICKERS = {"AAPL", "MSFT", "TSLA", "GOOG", "AMZN"}
@@ -42,25 +42,22 @@ class AddTicker(BaseModel):
 
 
 @app.get("/watchlist")
-def get_watchlist() -> List[str]:
-    return sorted(WATCHLIST)
+def get_watchlist():
+    rows = db_get_watchlist()
+    return [t for (t, _created_at) in rows]
 
 
 @app.post("/watchlist")
-def add_watchlist(item: AddTicker):
-    t = item.ticker.upper()
-    if t not in SUPPORTED_TICKERS:
-        return {"ok": False, "error": f"Unsupported ticker '{t}'. Try one of {sorted(SUPPORTED_TICKERS)}"}
-    WATCHLIST.add(t)
-    return {"ok": True, "tickers": sorted(WATCHLIST)}
+def add_watchlist_endpoint(item: AddTicker):
+    add_ticker(item.ticker) # write to the db
+    rows = db_get_watchlist()
+    return [t for (t, _created_at) in rows]
 
 @app.delete("/watchlist/{ticker}")
 def remove_watchlist(ticker: str):
-    t = ticker.upper()
-    if t in WATCHLIST:
-        WATCHLIST.remove(t)
-        return {"ok": True, "tickers": sorted(WATCHLIST)}
-    return {"ok": False, "error": f"Ticker '{t}' not in watchlist"}
+    remove_ticker(ticker)
+    rows = db_get_watchlist()
+    return [t for (t, _created_at) in rows]
 
 @app.get("/prices")
 def get_prices():
