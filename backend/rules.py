@@ -67,22 +67,38 @@ def delete_rule(rule_id: int):
 def list_events():
     return db_list_events()
 
-
+last_states = {}
 async def evaluate_rules_loop():
     while True:
         now = datetime.utcnow()
-        # read rules from DB
-        for r in db_list_rules():  # r: {'id', 'ticker', 'direction', 'price', 'created_at'}
-            price = PRICES.get(r["ticker"])
+        for r in RULES:
+            price = PRICES.get(r.ticker)
             if price is None:
                 continue
-            triggered = (
-                (r["direction"] == "above" and price >= r["price"]) or
-                (r["direction"] == "below" and price <= r["price"])
-            )
+
+            # Determine if condition is true now
+            is_above = price >= r.price
+            prev_state = last_states.get(r.id)
+
+            triggered = False
+            if r.direction == "above" and prev_state == False and is_above:
+                triggered = True
+            elif r.direction == "below" and prev_state == True and not is_above:
+                triggered = True
+
+            # Save new state
+            last_states[r.id] = is_above
+
             if triggered:
-                # write an event to DB
-                db_add_event(r["id"], r["ticker"], price, r["direction"])
+                EVENTS.append(Event(
+                    rule_id=r.id,
+                    ticker=r.ticker,
+                    price=price,
+                    direction=r.direction,
+                    triggered_at=now
+                ))
+                print(f"Rule {r.id} triggered: {r.ticker} {r.direction} {r.price}")
+
         await asyncio.sleep(2)
             
 
