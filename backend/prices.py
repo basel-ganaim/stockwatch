@@ -2,7 +2,7 @@ import asyncio
 import yfinance as yf
 
 PRICES = {}
-TICKERS = ["AAPL", "MSFT", "TSLA", "GOOG", "AMZN"]
+TICKERS = ["AAPL", "MSFT", "TSLA", "GOOG", "AMZN", "BTC-USD", "ETH-USD"]
 
 
 async def update_prices_loop():
@@ -15,5 +15,5 @@ async def update_prices_loop():
             except Exception as e:
                 print(f"Error fetching price for {t}: {e}")
         print("Updated prices:", PRICES)
-        await asyncio.sleep(10)  # update every 10 seconds
+        await asyncio.sleep(2)  # update every 1 seconds
                                                                      

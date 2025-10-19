@@ -54,7 +54,7 @@ function PriceChart({ data, height = 160}) {
 
     fetchPrices();
 
-    const interval = setInterval(fetchPrices, 1000);
+    const interval = setInterval(fetchPrices, 2000);  
     return () => clearInterval(interval);
 
   }, []);
