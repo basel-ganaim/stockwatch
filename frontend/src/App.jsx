@@ -37,39 +37,50 @@ function PriceChart({ data, height = 160}) {
   
 }
   useEffect(() => {
-    async function fetchPrices() {
+    async function fetchData() {
       try {
-        const res = await fetch("http://127.0.0.1:8000/prices");
-        const data = await res.json();
+        const [pricesRes, intradayRes] = await Promise.all([
+          fetch("http://127.0.0.1:8000/prices"),
+          fetch("http://127.0.0.1:8000/intraday"),
+        ]);
 
-        setPrices(data);
+        const pricesJson = await pricesRes.json();
+        const intradayJson = await intradayRes.json();
 
-        const now = new Date();
-  setHistory((prev) => {
-  const next = { ...prev };
-  for (const [t, p] of Object.entries(data)) {
-    if (typeof p !== "number") continue;
-    const arr = next[t] ? [...next[t]] : [];
-    arr.push({ time: now, price: p });
-    // keep only last 180 points (about 15 minutes at a 5s poll interval)
-    if (arr.length > 180) arr.shift();
-    next[t] = arr;
-  }
-  return next;
-});
+        setPrices(pricesJson);
 
-    } catch (err) {
-      console.error("Error fetching prices:", err);
-    } finally {
-      setLoading(false);
+        setHistory(() => {
+          const next = {};
+          for (const [ticker, points] of Object.entries(intradayJson || {})) {
+            if (!Array.isArray(points)) continue;
+            next[ticker] = points
+              .map(({ time, price }) => {
+                const parsedTime = new Date(time);
+                return {
+                  time: parsedTime,
+                  price: typeof price === "number" ? price : Number(price),
+                };
+              })
+              .filter(
+                (point) =>
+                  point.time.toString() !== "Invalid Date" &&
+                  typeof point.price === "number" &&
+                  !Number.isNaN(point.price)
+              );
+          }
+          return next;
+        });
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      } finally {
+        setLoading(false);
+      }
     }
-    }
 
-    fetchPrices();
+    fetchData();
 
-    const interval = setInterval(fetchPrices, 5000);  
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-
   }, []);
 
   if (loading) {

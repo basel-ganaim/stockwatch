@@ -2,14 +2,15 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
 import asyncio
-from prices import PRICES, update_prices_loop
+from prices import PRICES, INTRADAY, update_prices_loop, TICKERS
 from rules import router as rules_router, events_router, evaluate_rules_loop
 from fastapi.middleware.cors import CORSMiddleware
-from prices import PRICES
 from db_utils import add_ticker, get_watchlist as db_get_watchlist, remove_ticker
 from db_utils import DB_PATH
+from db_simple import init_db 
 
 
+init_db()
 app = FastAPI()
 
 app.add_middleware(
@@ -23,6 +24,9 @@ app.add_middleware(
 app.include_router(rules_router)
 app.include_router(events_router)
 
+# the supported tickers for now
+SUPPORTED_TICKERS = set(TICKERS)
+
 @app.on_event("startup")
 async def start_background_tasks():
     asyncio.create_task(update_prices_loop())
@@ -31,10 +35,6 @@ async def start_background_tasks():
 @app.get("/")
 def health():
     return{"ok": True}
-
-
-# the supported tickers for now
-SUPPORTED_TICKERS = {"AAPL", "MSFT", "TSLA", "GOOG", "AMZN"}
 
 
 class AddTicker(BaseModel):
@@ -71,3 +71,18 @@ def get_price(ticker: str):
         return {"ok": False, "error": f"Unsupported ticker '{t}', try one of {sorted(SUPPORTED_TICKERS)}"}
     price = PRICES.get(t)
     return {"ok": True, "ticker": t, "price": price}
+
+
+@app.get("/intraday")
+def get_intraday_all():
+    return INTRADAY
+
+
+@app.get("/intraday/{ticker}")
+def get_intraday_single(ticker: str):
+    t = ticker.upper()
+    series = INTRADAY.get(t)
+    if not series:
+        return {"ok": False, "error": f"No intraday data for '{t}'."}
+    return {"ok": True, "ticker": t, "data": series}
+

@@ -9,7 +9,7 @@ from db_utils import list_events as db_list_events
 from db_utils import add_event as db_add_event
 from db_utils import list_rules as db_list_rules
 
-from prices import PRICES
+from prices import PRICES 
 
 class RuleCreate(BaseModel):
     ticker: str
@@ -31,10 +31,6 @@ class Event(BaseModel):
     triggered_at: datetime
 
 
-
-RULES: List[Rule] = []
-EVENTS: List[Event] = []
-_next_rule_id = 1
 
 router = APIRouter(prefix = "/rules", tags = ["rules"])
 events_router = APIRouter(prefix = "/events", tags = ["events"])
@@ -70,35 +66,45 @@ def list_events():
 last_states = {}
 async def evaluate_rules_loop():
     while True:
+        rules = db_list_rules()
+        seen_ids = set()
         now = datetime.utcnow()
-        for r in RULES:
-            price = PRICES.get(r.ticker)
+
+        for r in rules:
+            rid = r["id"]
+            ticker = r["ticker"]
+            direction = r["direction"]
+            target_price = r["price"]
+            seen_ids.add(rid)
+
+            price = PRICES.get(ticker)
             if price is None:
                 continue
 
-            # Determine if condition is true now
-            is_above = price >= r.price
-            prev_state = last_states.get(r.id)
+            condition_met = ( #returns True or False
+                price >= target_price if direction == "above"
+                else price <= target_price
+            )
+            prev_condition = last_states.get(rid)
 
             triggered = False
-            if r.direction == "above" and prev_state == False and is_above:
+            if prev_condition is None: 
+                triggered = condition_met
+            elif not prev_condition and condition_met:
                 triggered = True
-            elif r.direction == "below" and prev_state == True and not is_above:
-                triggered = True
-
-            # Save new state
-            last_states[r.id] = is_above
+            last_states[rid] = condition_met
 
             if triggered:
-                EVENTS.append(Event(
-                    rule_id=r.id,
-                    ticker=r.ticker,
-                    price=price,
-                    direction=r.direction,
-                    triggered_at=now
-                ))
-                print(f"Rule {r.id} triggered: {r.ticker} {r.direction} {r.price}")
-
+                db_add_event(rid, ticker, price, direction)
+                print(
+                    f"Rule {rid} trigered: {ticker} {direction} {target_price} "
+                    f"at {now.isoformat()} (price = {price})"
+                )
+        for rid in list(last_states.keys()):
+            if rid not in seen_ids:
+                last_states.pop(rid, None)
         await asyncio.sleep(2)
+
             
 
+            
