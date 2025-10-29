@@ -4,10 +4,10 @@ import yfinance as yf
 PRICES = {}
 INTRADAY = {}
 TICKERS = [
-    "AAPL", "MSFT", "GOOG", "AMZN", "NVDA",
-    "TSLA", "AMD", "NFLX", "PLTR", "SMCI",
-    "BTC-USD", "ETH-USD", "SPY", "QQQ", "GLD",
-    "NKE"
+    "AAPL", "MSFT", "GOOG", "AMZN", "NVDA", "TSLA", "META", "AMD",
+    "NFLX", "PLTR", "SMCI", "NKE", "ORCL", "INTC", "SPY", "QQQ", "DIA",
+    "BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", "XRP-USD", "DOGE-USD",
+    "GLD", "SLV", "PPLT", "PALL", "HG=F"
 ]
 
 
