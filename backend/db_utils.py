@@ -82,3 +82,4 @@ def list_events(limit=50):
     )
     rows = [dict(r) for r in cur.fetchall()]
     c.close(); return rows
+

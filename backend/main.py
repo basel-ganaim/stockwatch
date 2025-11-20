@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
 import asyncio
-from prices import PRICES, INTRADAY, update_prices_loop, TICKERS
+from prices import PRICES, INTRADAY, update_prices_loop
 from rules import router as rules_router, events_router, evaluate_rules_loop
 from fastapi.middleware.cors import CORSMiddleware
 from db_utils import add_ticker, get_watchlist as db_get_watchlist, remove_ticker
@@ -25,7 +25,6 @@ app.include_router(rules_router)
 app.include_router(events_router)
 
 # the supported tickers for now
-SUPPORTED_TICKERS = set(TICKERS)
 
 @app.on_event("startup")
 async def start_background_tasks():
@@ -67,10 +66,11 @@ def get_prices():
 @app.get("/price/{ticker}")
 def get_price(ticker: str):
     t = ticker.upper()
-    if t not in SUPPORTED_TICKERS:
-        return {"ok": False, "error": f"Unsupported ticker '{t}', try one of {sorted(SUPPORTED_TICKERS)}"}
     price = PRICES.get(t)
+    if price is None:
+        return {"ok": False, "error": f"No price available for '{t}' yet. Add it to your watchlist and wait for the next refresh."}
     return {"ok": True, "ticker": t, "price": price}
+
 
 
 @app.get("/intraday")

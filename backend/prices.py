@@ -1,19 +1,26 @@
 import asyncio
 import yfinance as yf
-
+from db_utils import get_watchlist 
 PRICES = {}
 INTRADAY = {}
-TICKERS = [
+DEFAULT_TICKERS = [
     "AAPL", "MSFT", "GOOG", "AMZN", "NVDA", "TSLA", "META", "AMD",
     "NFLX", "PLTR", "SMCI", "NKE", "ORCL", "INTC", "SPY", "QQQ", "DIA",
     "BTC-USD", "ETH-USD", "SOL-USD", "ADA-USD", "XRP-USD", "DOGE-USD",
     "GLD", "SLV", "PPLT", "PALL", "HG=F"
 ]
 
+WL_TICKERS = [row[0] for row in get_watchlist()]
+
+TRACKED_TICKERS = set(DEFAULT_TICKERS + WL_TICKERS)
+
+def watchlist_tickers():
+    return [row[0].upper() for row in get_watchlist()]
 
 async def update_prices_loop():
     while True:
-        for t in TICKERS:
+        tracked = set(DEFAULT_TICKERS) | set(watchlist_tickers())
+        for t in tracked:
             try:
                 ticker = yf.Ticker(t)
                 history = ticker.history(period="1d", interval="1m")
